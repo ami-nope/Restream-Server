@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================ */
+/* Custom Design System Styles                  */
+/* ============================================ */
+
+@layer base {
+  body {
+    @apply bg-surface-950 text-gray-100 font-sans antialiased;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(6, 182, 212, 0.03) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+  }
+}
+
+@layer components {
+  /* Glassmorphism card */
+  .glass-card {
+    @apply bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+      0 4px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300;
+  }
+
+  .glass-card-hover:hover {
+    @apply border-white/[0.12] bg-white/[0.05];
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+      0 8px 32px rgba(0, 0, 0, 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* Accent gradient button */
+  .btn-primary {
+    @apply px-5 py-2.5 rounded-xl font-semibold text-sm text-white
+           bg-gradient-to-r from-accent to-accent-cyan
+           hover:from-accent-light hover:to-cyan-400
+           transition-all duration-200 shadow-lg shadow-accent/20
+           active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
+           disabled:hover:from-accent disabled:hover:to-accent-cyan
+           disabled:active:scale-100;
+  }
+
+  .btn-danger {
+    @apply px-5 py-2.5 rounded-xl font-semibold text-sm text-white
+           bg-gradient-to-r from-red-600 to-red-500
+           hover:from-red-500 hover:to-red-400
+           transition-all duration-200 shadow-lg shadow-red-500/20
+           active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-5 py-2.5 rounded-xl font-semibold text-sm text-gray-300
+           bg-white/[0.06] border border-white/[0.08]
+           hover:bg-white/[0.1] hover:border-white/[0.14]
+           transition-all duration-200
+           active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-warn {
+    @apply px-5 py-2.5 rounded-xl font-semibold text-sm text-white
+           bg-gradient-to-r from-amber-600 to-amber-500
+           hover:from-amber-500 hover:to-amber-400
+           transition-all duration-200 shadow-lg shadow-amber-500/20
+           active:scale-[0.98];
+  }
+
+  /* Status dot with pulse */
+  .status-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+
+  .status-dot-live {
+    @apply status-dot bg-live;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  }
+
+  .status-dot-error {
+    @apply status-dot bg-danger;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  }
+
+  .status-dot-connecting {
+    @apply status-dot bg-warn animate-pulse;
+  }
+
+  .status-dot-idle {
+    @apply status-dot bg-gray-500;
+  }
+
+  /* Input fields */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08]
+           text-gray-100 placeholder-gray-500
+           focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30
+           transition-all duration-200 text-sm;
+  }
+
+  /* Live badge */
+  .live-badge {
+    @apply inline-flex items-center gap-2 px-4 py-1.5 rounded-full
+           bg-live/20 text-live font-bold text-sm tracking-wider uppercase;
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  .offline-badge {
+    @apply inline-flex items-center gap-2 px-4 py-1.5 rounded-full
+           bg-gray-700/50 text-gray-400 font-bold text-sm tracking-wider uppercase;
+  }
+
+  /* Toggle switch */
+  .toggle-switch {
+    @apply relative inline-flex h-6 w-11 items-center rounded-full
+           transition-colors duration-300 cursor-pointer;
+  }
+
+  .toggle-switch-enabled {
+    @apply toggle-switch bg-accent;
+  }
+
+  .toggle-switch-disabled {
+    @apply toggle-switch bg-gray-600;
+  }
+
+  .toggle-knob {
+    @apply inline-block h-4 w-4 rounded-full bg-white shadow-md
+           transform transition-transform duration-300;
+  }
+
+  .toggle-knob-on {
+    @apply toggle-knob translate-x-6;
+  }
+
+  .toggle-knob-off {
+    @apply toggle-knob translate-x-1;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent to-accent-cyan;
+  }
+}

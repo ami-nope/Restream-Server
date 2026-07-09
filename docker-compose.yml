@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  # ---- SRS Media Server (RTMP Ingest) ----
+  srs:
+    image: ossrs/srs:6
+    container_name: restream-srs
+    ports:
+      - "1935:1935"     # RTMP ingest (OBS connects here)
+      - "1985:1985"     # SRS HTTP API
+      - "8080:8080"     # SRS HTTP server
+    volumes:
+      - ./srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
+    restart: unless-stopped
+    networks:
+      - restream
+
+  # ---- Restream App (Backend + Frontend) ----
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: restream-app
+    ports:
+      - "${APP_PORT:-3000}:3001"  # Dashboard + API
+    environment:
+      - STREAM_KEY=${STREAM_KEY:-live}
+      - SRS_HOST=srs
+      - SRS_API_PORT=1985
+      - SRS_RTMP_PORT=1935
+      - NODE_ENV=production
+    volumes:
+      - app-data:/app/data   # Persistent config storage
+    depends_on:
+      - srs
+    restart: unless-stopped
+    networks:
+      - restream
+
+volumes:
+  app-data:
+    driver: local
+
+networks:
+  restream:
+    driver: bridge
