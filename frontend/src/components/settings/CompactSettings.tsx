@@ -100,9 +100,9 @@ const CompactSettings: React.FC = () => {
     );
   }
 
-  const obsUrl = settings
-    ? `rtmp://${window.location.hostname}:${settings.srsRtmpPort}/live`
-    : '';
+  const obsUrl = settings?.publicRtmpUrl
+    ? settings.publicRtmpUrl
+    : (settings ? `rtmp://${window.location.hostname}:${settings.srsRtmpPort}/live` : '');
 
   return (
     <div className="glass-card p-4 flex flex-col gap-3 min-h-0">

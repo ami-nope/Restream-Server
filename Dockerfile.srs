@@ -1,0 +1,19 @@
+FROM ossrs/srs:6
+
+# Expose RTMP, HTTP API, and HTTP Console ports
+EXPOSE 1935 1985 8080
+
+# Copy custom config file to the template path
+COPY srs/srs.conf /usr/local/srs/conf/srs.conf.template
+
+# Copy custom entrypoint script
+COPY srs/srs-entrypoint.sh /usr/local/srs/srs-entrypoint.sh
+
+# Make the entrypoint script executable
+RUN chmod +x /usr/local/srs/srs-entrypoint.sh
+
+# Default environment defaults (to run locally under compose)
+ENV BACKEND_HOST=app
+ENV BACKEND_PORT=3001
+
+ENTRYPOINT ["/usr/local/srs/srs-entrypoint.sh"]

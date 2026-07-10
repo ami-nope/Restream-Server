@@ -181,9 +181,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onRefres
 
   if (!isOpen) return null;
 
-  const obsUrl = settings
-    ? `rtmp://${window.location.hostname}:${settings.srsRtmpPort}/live`
-    : '';
+  const obsUrl = settings?.publicRtmpUrl
+    ? settings.publicRtmpUrl
+    : (settings ? `rtmp://${window.location.hostname}:${settings.srsRtmpPort}/live` : '');
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">

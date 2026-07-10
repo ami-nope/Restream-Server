@@ -34,10 +34,6 @@ router.get('/health', async (_req: Request, res: Response) => {
   });
 });
 
-/**
- * GET /api/settings
- * Get current settings
- */
 router.get('/settings', (_req: Request, res: Response) => {
   const config = getConfig();
   res.json({
@@ -45,6 +41,7 @@ router.get('/settings', (_req: Request, res: Response) => {
     settings: config.settings,
     srsHost: process.env.SRS_HOST || 'srs',
     srsRtmpPort: parseInt(process.env.SRS_RTMP_PORT || '1935', 10),
+    publicRtmpUrl: process.env.PUBLIC_RTMP_URL || '',
   });
 });
 

@@ -98,4 +98,5 @@ export interface AppSettings {
   };
   srsHost: string;
   srsRtmpPort: number;
+  publicRtmpUrl?: string;
 }

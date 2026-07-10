@@ -105,12 +105,15 @@ Navigate to `http://<your-server-ip>:3000` and open Settings.
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_PORT` | `3000` | External port for dashboard |
-| `SRS_HOST` | `srs` | SRS hostname (Docker service) |
-| `SRS_API_PORT` | `1985` | SRS HTTP API port |
-| `SRS_RTMP_PORT` | `1935` | SRS RTMP port |
+| Variable | Default | Service | Description |
+|----------|---------|---------|-------------|
+| `APP_PORT` | `3000` | Local Compose | External port for Node backend dashboard |
+| `SRS_HOST` | `srs` | Node Backend | SRS hostname/private IP (e.g. `srs.railway.internal`) |
+| `SRS_API_PORT` | `1985` | Node Backend | SRS HTTP API port |
+| `SRS_RTMP_PORT` | `1935` | Node Backend | SRS RTMP port |
+| `PUBLIC_RTMP_URL` | *(calculated)* | Node Backend | Custom RTMP URL to show in OBS (e.g. `rtmp://tcp.railway.app:12345/live`) |
+| `BACKEND_HOST` | `app` | SRS Server | Hostname of the Node backend for HTTP callbacks (e.g. `app.railway.internal`) |
+| `BACKEND_PORT` | `3001` | SRS Server | Local listening port of the Node backend container |
 
 ---
 
@@ -136,11 +139,40 @@ npm run dev    # Vite dev server with API proxy
 
 ## Railway Deployment
 
-1. Connect your GitHub repo to Railway
-2. Set the root directory to `/`
-3. Railway will detect the Dockerfile
-4. Configure the OBS stream key from Dashboard -> Settings
-5. Note: RTMP port 1935 requires Railway TCP proxy setup
+You will deploy this repository as **two separate services** inside the same Railway project.
+
+### Service 1: SRS Media Server
+
+1. Add a new service from your GitHub repo.
+2. Under **Settings** ➔ **Build**:
+   - Set **Dockerfile Path** to `Dockerfile.srs`.
+3. Under **Settings** ➔ **General**:
+   - Change the service name to `srs` (so private networking generates `srs.railway.internal`).
+4. Under **Variables**:
+   - Add `BACKEND_HOST=app.railway.internal` (assuming your backend service is named `app`).
+   - Add `BACKEND_PORT=3001` (internal backend port).
+5. Under **Settings** ➔ **Networking**:
+   - Click **Add TCP Proxy**.
+   - Set **Port** to `1935` (RTMP).
+   - *Note down the assigned domain and port (e.g. `rtmp://tcp-proxy-domain.railway.app:12345/live`)*.
+
+---
+
+### Service 2: Node.js Backend & Dashboard
+
+1. Add another service from the same GitHub repo.
+2. Under **Settings** ➔ **Build**:
+   - Set **Dockerfile Path** to `Dockerfile` (default).
+3. Under **Settings** ➔ **General**:
+   - Change the service name to `app` (so private networking generates `app.railway.internal`).
+4. Under **Variables**:
+   - Add `PORT=3001` (the backend container listens on port 3001).
+   - Add `SRS_HOST=srs.railway.internal` (points to Service 1 via Railway Private Network).
+   - Add `SRS_API_PORT=1985` (SRS HTTP API).
+   - Add `SRS_RTMP_PORT=1935` (SRS RTMP ingest).
+   - Add `PUBLIC_RTMP_URL=rtmp://tcp-proxy-domain.railway.app:12345/live` (use the public RTMP TCP proxy URL noted from Service 1).
+5. Under **Settings** ➔ **Networking**:
+   - Generate a **Public Domain** to expose the Dashboard on port `3001`.
 
 ---
 

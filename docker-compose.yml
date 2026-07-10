@@ -3,14 +3,17 @@ version: "3.8"
 services:
   # ---- SRS Media Server (RTMP Ingest) ----
   srs:
-    image: ossrs/srs:6
+    build:
+      context: .
+      dockerfile: Dockerfile.srs
     container_name: restream-srs
     ports:
       - "1935:1935"     # RTMP ingest (OBS connects here)
       - "1985:1985"     # SRS HTTP API
       - "8080:8080"     # SRS HTTP server
-    volumes:
-      - ./srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
+    environment:
+      - BACKEND_HOST=app
+      - BACKEND_PORT=3001
     restart: unless-stopped
     networks:
       - restream

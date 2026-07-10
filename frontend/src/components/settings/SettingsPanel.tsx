@@ -101,9 +101,9 @@ const SettingsPanel: React.FC = () => {
     );
   }
 
-  const obsUrl = settings
-    ? `rtmp://${window.location.hostname}:${settings.srsRtmpPort}/live`
-    : '';
+  const obsUrl = settings?.publicRtmpUrl
+    ? settings.publicRtmpUrl
+    : (settings ? `rtmp://${window.location.hostname}:${settings.srsRtmpPort}/live` : '');
 
   return (
     <div className="space-y-6 max-w-3xl">
