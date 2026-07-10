@@ -53,6 +53,7 @@ export function setStreamDisconnected(): void {
 export function getMonitorStats(): MonitorStats {
   const stream = getStreamStats();
   const destinations = getAllRelayStates();
+  const brbStatus = getBrbStatus();
 
   const connectedCount = destinations.filter((destination) => destination.status === 'live').length;
   const failedCount = destinations.filter((destination) => destination.status === 'error').length;
@@ -106,6 +107,6 @@ export function getMonitorStats(): MonitorStats {
     inputQuality,
     outputQuality,
     averageLatencyMs: outputActive ? relayMetrics.averageLatencyMs : null,
-    ...getBrbStatus(),
+    ...brbStatus,
   };
 }

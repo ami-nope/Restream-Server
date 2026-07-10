@@ -3,7 +3,14 @@
 // ============================================
 
 /** Status of an individual relay process */
-export type RelayStatus = 'idle' | 'connecting' | 'live' | 'error' | 'reconnecting' | 'stopped';
+export type RelayStatus =
+  | 'idle'
+  | 'connecting'
+  | 'live'
+  | 'error'
+  | 'reconnecting'
+  | 'stopped'
+  | 'brb';
 
 /** Status of the incoming stream from OBS */
 export type StreamStatus = 'offline' | 'live';

@@ -8,6 +8,9 @@ import {
   stopAllRelays,
   restartAllRelays,
   isRelayActive,
+  isBrbActive,
+  handleStreamPublish,
+  getBrbStatus,
   getAllRelayStates,
 } from '../services/relay';
 import { getStreamStats } from '../services/srs';
@@ -25,12 +28,20 @@ router.post('/start', (_req: Request, res: Response) => {
 
   if (stats.status !== 'live') {
     res.status(400).json({
-      error: 'Cannot start relay: No incoming stream from OBS',
+      error: isBrbActive()
+        ? 'BRB fallback is active. Reconnect OBS to resume the live relay, or stop the relay to end BRB.'
+        : 'Cannot start relay: No incoming stream from OBS',
     });
     return;
   }
 
   if (isRelayActive()) {
+    if (isBrbActive()) {
+      handleStreamPublish();
+      res.json({ success: true, message: 'BRB stopped; relays resuming' });
+      return;
+    }
+
     res.status(400).json({
       error: 'Relay is already active',
     });
@@ -71,6 +82,7 @@ router.get('/status', (_req: Request, res: Response) => {
   res.json({
     stream: stats,
     relayActive: active,
+    ...getBrbStatus(),
     destinations: relayStates,
   });
 });

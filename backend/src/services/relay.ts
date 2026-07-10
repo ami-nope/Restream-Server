@@ -523,7 +523,7 @@ function spawnRelay(destination: Destination): void {
 // ---- Reconnection Logic ----
 
 async function handleReconnect(destination: Destination): Promise<void> {
-  if (!relayActive) return;
+  if (!relayActive || brbActive) return;
 
   const config = getConfig();
   const state = getOrCreateState(destination.id);
@@ -554,7 +554,7 @@ async function handleReconnect(destination: Destination): Promise<void> {
 
   await sleep(delay);
 
-  if (reconnectFlags.get(destination.id) || !relayActive) {
+  if (reconnectFlags.get(destination.id) || !relayActive || brbActive) {
     return;
   }
 
@@ -572,6 +572,10 @@ async function handleReconnect(destination: Destination): Promise<void> {
 
 /** Start relays for all enabled destinations */
 export function startAllRelays(): void {
+  if (brbActive) {
+    stopBrbModeOnly();
+  }
+
   relayActive = true;
   const destinations = getDestinations().filter((destination) => destination.enabled);
 
@@ -637,6 +641,11 @@ export function startRelay(destId: string): void {
   }
 
   relayActive = true;
+  if (brbActive) {
+    spawnBrbStream(destination);
+    return;
+  }
+
   spawnRelay(destination);
 }
 
@@ -644,6 +653,31 @@ export function startRelay(destId: string): void {
 export function stopRelay(destId: string): void {
   reconnectFlags.set(destId, true);
   const proc = relayProcesses.get(destId);
+  const brbProc = brbProcesses.get(destId);
+
+  if (brbProc) {
+    setState(destId, { status: 'stopped' });
+    brbProc.kill('SIGTERM');
+
+    setTimeout(() => {
+      try {
+        if (!brbProc.killed) brbProc.kill('SIGKILL');
+      } catch {
+        // Process already exited.
+      }
+    }, 5000);
+
+    if (!proc) {
+      setTimeout(() => {
+        const currentStatus = getOrCreateState(destId).status;
+        if (currentStatus === 'stopped') {
+          setState(destId, { status: 'idle', pid: null, reconnectAttempts: 0 });
+        }
+      }, 500);
+      return;
+    }
+  }
+
   if (!proc) {
     log.warn(`No running relay for destination ${destId}`);
     setState(destId, {
@@ -752,6 +786,11 @@ export function isRelayActive(): boolean {
   return relayActive;
 }
 
+/** Check if BRB fallback streams are active */
+export function isBrbActive(): boolean {
+  return brbActive;
+}
+
 /** Cleanup - kill all processes (for graceful shutdown) */
 export function cleanup(): void {
   relayActive = false;
@@ -770,7 +809,7 @@ export function cleanup(): void {
 }
 
 /** Get BRB Status for monitoring */
-export function getBrbStatus(): { active: boolean; timeRemaining: number } {
+export function getBrbStatus(): { brbActive: boolean; brbTimeRemaining: number } {
   const config = getConfig();
   const timeoutMs = (config.settings.brbTimeout ?? 10) * 60 * 1000;
   let remaining = 0;
@@ -781,8 +820,8 @@ export function getBrbStatus(): { active: boolean; timeRemaining: number } {
   }
 
   return {
-    active: brbActive,
-    timeRemaining: remaining,
+    brbActive,
+    brbTimeRemaining: remaining,
   };
 }
 
@@ -866,11 +905,18 @@ function spawnBrbStream(destination: Destination): void {
 
   proc.on('close', (code) => {
     brbProcesses.delete(destination.id);
-    if (brbActive) {
+    const currentDestination = getDestinations().find((dest) => dest.id === destination.id);
+    const currentState = getOrCreateState(destination.id);
+    const shouldRespawn =
+      brbActive && currentDestination?.enabled && currentState.status === 'brb';
+
+    if (shouldRespawn) {
       log.warn(`BRB stream process for ${destination.name} exited with code ${code}. Respawning in 2s...`);
       setTimeout(() => {
-        if (brbActive) {
-          spawnBrbStream(destination);
+        const latestDestination = getDestinations().find((dest) => dest.id === destination.id);
+        const latestState = getOrCreateState(destination.id);
+        if (brbActive && latestDestination?.enabled && latestState.status === 'brb') {
+          spawnBrbStream(latestDestination);
         }
       }, 2000);
     } else {
@@ -932,9 +978,13 @@ export function handleStreamPublish(): void {
     log.info('Stream reconnected during BRB. Resuming normal relays...');
     startAllRelays();
   } else {
-    // Check if we should auto-start relays
-    if (config.settings.autoStartRelay && !relayActive) {
-      log.info('Stream connected. Auto-starting relays...');
+    // Auto-start is idempotent; existing FFmpeg processes are skipped in spawnRelay().
+    if (config.settings.autoStartRelay) {
+      log.info(
+        relayActive
+          ? 'Stream connected. Ensuring enabled relays are running...'
+          : 'Stream connected. Auto-starting relays...'
+      );
       startAllRelays();
     }
   }

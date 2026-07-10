@@ -49,8 +49,11 @@ COPY --from=backend-build /app/backend/node_modules ./node_modules
 # Copy frontend build to be served as static files
 COPY --from=frontend-build /app/frontend/dist ./public
 
+# Copy bundled default stream assets. Runtime uploads still live in /app/data.
+COPY Assets ./assets
+
 # Create data directory for persistent config
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data/assets
 
 # Default environment
 ENV NODE_ENV=production

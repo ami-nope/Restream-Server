@@ -40,6 +40,42 @@ if (!fs.existsSync(ASSETS_DIR)) {
   fs.mkdirSync(ASSETS_DIR, { recursive: true });
 }
 
+function hasBrbAsset(): boolean {
+  try {
+    return fs.readdirSync(ASSETS_DIR).some((file) => file.startsWith('brb.'));
+  } catch {
+    return false;
+  }
+}
+
+function seedDefaultBrbAsset(): void {
+  if (hasBrbAsset()) {
+    return;
+  }
+
+  const candidates = [
+    process.env.DEFAULT_BRB_IMAGE,
+    path.resolve(__dirname, '../assets/Be.png'),
+    path.resolve(__dirname, '../../Assets/Be.png'),
+    path.resolve(process.cwd(), '../Assets/Be.png'),
+  ].filter(Boolean) as string[];
+
+  const source = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!source) {
+    return;
+  }
+
+  const target = path.join(ASSETS_DIR, 'brb.png');
+  try {
+    fs.copyFileSync(source, target);
+    log.info(`Seeded default BRB image: ${target}`);
+  } catch (err) {
+    log.error(`Failed to seed default BRB image: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+seedDefaultBrbAsset();
+
 log.info(`Stream key: ${config.streamKey}`);
 log.info(`Auto-start relay: ${config.settings.autoStartRelay}`);
 log.info(`Environment: ${NODE_ENV}`);

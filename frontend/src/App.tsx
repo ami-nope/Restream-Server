@@ -8,6 +8,7 @@ import QuickActions from './components/dashboard/QuickActions';
 import DestinationList from './components/destinations/DestinationList';
 import LogViewer from './components/logs/LogViewer';
 import SettingsModal from './components/settings/SettingsModal';
+import AssetsModal from './components/settings/AssetsModal';
 import UptimeTimer from './components/dashboard/UptimeTimer';
 import LiveChatPanel from './components/dashboard/LiveChatPanel';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -44,16 +45,28 @@ const emptyStats: MonitorStats = {
   inputQuality: null,
   outputQuality: null,
   averageLatencyMs: null,
+  brbActive: false,
+  brbTimeRemaining: 0,
 };
+
+function formatCountdown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
 
 const App: React.FC = () => {
   const { connected, stats, logs, chatMessages, clearLogs, clearChat } = useWebSocket();
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [assetsModalOpen, setAssetsModalOpen] = useState(false);
   const [chatRefreshKey, setChatRefreshKey] = useState(0);
 
   const currentStats = stats || emptyStats;
   const streamStatus = currentStats.stream.status;
+  const brbActive = currentStats.brbActive === true;
+  const brbTimeRemaining = currentStats.brbTimeRemaining ?? 0;
+  const ingestStatus = brbActive ? 'brb' : streamStatus;
 
   const handleRelayAction = useCallback(() => {
     // Stats will update via WebSocket automatically
@@ -61,11 +74,20 @@ const App: React.FC = () => {
 
   // Determine if relay is active based on destination states
   const relayActive = currentStats.destinations.some(
-    (d) => d.status === 'live' || d.status === 'connecting' || d.status === 'reconnecting'
+    (d) =>
+      d.status === 'live' ||
+      d.status === 'connecting' ||
+      d.status === 'reconnecting' ||
+      d.status === 'brb'
   );
 
   return (
-    <Layout streamStatus={streamStatus} wsConnected={connected} onOpenSettings={() => setSettingsModalOpen(true)}>
+    <Layout
+      streamStatus={streamStatus}
+      wsConnected={connected}
+      onOpenSettings={() => setSettingsModalOpen(true)}
+      onOpenAssets={() => setAssetsModalOpen(true)}
+    >
       <div className="flex-1 grid grid-cols-12 gap-4 min-h-0 h-full">
         {/* Left Column: Ingest Status and Controls */}
         <div className="col-span-4 flex flex-col gap-4 min-h-0">
@@ -76,10 +98,15 @@ const App: React.FC = () => {
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 OBS Ingest Status
               </h3>
-              {streamStatus === 'live' ? (
+              {ingestStatus === 'live' ? (
                 <div className="live-badge text-xs !px-2.5 !py-0.5">
                   <span className="status-dot-live animate-pulse-live" />
                   LIVE
+                </div>
+              ) : ingestStatus === 'brb' ? (
+                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-warn/15 text-warn font-bold text-xs tracking-wider uppercase">
+                  <span className="status-dot-connecting" />
+                  BRB ({formatCountdown(brbTimeRemaining)} remaining)
                 </div>
               ) : (
                 <div className="offline-badge text-xs !px-2.5 !py-0.5">
@@ -87,6 +114,13 @@ const App: React.FC = () => {
                   OFFLINE
                 </div>
               )}
+            </div>
+
+            <div className="flex justify-between rounded-xl border border-white/5 bg-white/[0.01] p-3 text-xs">
+              <span className="text-gray-500">OBS Connection:</span>
+              <span className={streamStatus === 'live' ? 'text-live font-semibold' : 'text-gray-300 font-semibold'}>
+                {streamStatus === 'live' ? 'Connected' : 'Disconnected'}
+              </span>
             </div>
 
             {/* Uptime Timers */}
@@ -108,7 +142,7 @@ const App: React.FC = () => {
                 </span>
                 <UptimeTimer
                   seconds={currentStats.outgoingUptime}
-                  active={streamStatus === 'live' && currentStats.connectedCount > 0}
+                  active={(streamStatus === 'live' || brbActive) && currentStats.connectedCount > 0}
                   className="text-lg font-bold font-mono text-gradient tabular-nums"
                 />
               </div>
@@ -167,6 +201,7 @@ const App: React.FC = () => {
           <QuickActions
             isLive={streamStatus === 'live'}
             relayActive={relayActive}
+            brbActive={brbActive}
             onAction={handleRelayAction}
           />
         </div>
@@ -211,6 +246,11 @@ const App: React.FC = () => {
         isOpen={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
         onRefreshChatStatus={() => setChatRefreshKey((k) => k + 1)}
+      />
+
+      <AssetsModal
+        isOpen={assetsModalOpen}
+        onClose={() => setAssetsModalOpen(false)}
       />
     </Layout>
   );

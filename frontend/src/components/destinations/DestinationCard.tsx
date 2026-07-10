@@ -23,6 +23,7 @@ const statusConfig: Record<RelayStatus, { label: string; class: string; dot: str
   error: { label: 'Error', class: 'text-danger', dot: 'status-dot-error' },
   reconnecting: { label: 'Reconnecting...', class: 'text-warn', dot: 'status-dot-connecting' },
   stopped: { label: 'Stopped', class: 'text-gray-500', dot: 'status-dot-idle' },
+  brb: { label: 'BRB fallback', class: 'text-warn', dot: 'status-dot-connecting' },
 };
 
 const DestinationCard: React.FC<DestinationCardProps> = ({

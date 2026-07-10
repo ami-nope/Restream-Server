@@ -14,7 +14,7 @@ const router = Router();
 const DATA_DIR = path.resolve(__dirname, '../../data');
 const ASSETS_DIR = path.join(DATA_DIR, 'assets');
 
-const ASSET_TYPES = ['brb', 'starting_soon', 'ending', 'offline'];
+const ASSET_TYPES = ['brb', 'starting_soon', 'ending', 'offline'] as const;
 
 /** Ensure assets directory exists */
 function ensureAssetsDir(): void {
@@ -101,23 +101,9 @@ router.get('/', (req, res) => {
  */
 router.post('/upload/:type', (req, res) => {
   const { type } = req.params;
-  if (!ASSET_TYPES.includes(type)) {
+  if (!(ASSET_TYPES as readonly string[]).includes(type)) {
     res.status(400).json({ error: `Invalid asset type: "${type}"` });
     return;
-  }
-
-  ensureAssetsDir();
-
-  // Remove existing file matching this asset type
-  try {
-    const files = fs.readdirSync(ASSETS_DIR);
-    for (const file of files) {
-      if (file.startsWith(type + '.')) {
-        fs.unlinkSync(path.join(ASSETS_DIR, file));
-      }
-    }
-  } catch (err) {
-    log.error(`Failed during old asset cleanup: ${err}`);
   }
 
   // Handle file upload
@@ -133,13 +119,26 @@ router.post('/upload/:type', (req, res) => {
       return;
     }
 
-    log.success(`Uploaded asset "${type}": ${req.file.filename} (${req.file.size} bytes)`);
+    const uploadedFile = req.file;
+
+    try {
+      const files = fs.readdirSync(ASSETS_DIR);
+      for (const file of files) {
+        if (file.startsWith(type + '.') && file !== uploadedFile.filename) {
+          fs.unlinkSync(path.join(ASSETS_DIR, file));
+        }
+      }
+    } catch (cleanupErr) {
+      log.error(`Failed during old asset cleanup: ${cleanupErr}`);
+    }
+
+    log.success(`Uploaded asset "${type}": ${uploadedFile.filename} (${uploadedFile.size} bytes)`);
     res.json({
       success: true,
       asset: {
         exists: true,
-        name: req.file.filename,
-        size: req.file.size,
+        name: uploadedFile.filename,
+        size: uploadedFile.size,
         url: `/api/assets/${type}?t=${Date.now()}`,
       },
     });
@@ -167,7 +166,7 @@ router.get('/:type', (req, res) => {
  */
 router.delete('/:type', (req, res) => {
   const { type } = req.params;
-  if (!ASSET_TYPES.includes(type)) {
+  if (!(ASSET_TYPES as readonly string[]).includes(type)) {
     res.status(400).json({ error: `Invalid asset type: "${type}"` });
     return;
   }

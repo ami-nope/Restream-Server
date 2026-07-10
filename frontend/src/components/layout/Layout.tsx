@@ -10,6 +10,7 @@ interface LayoutProps {
   streamStatus: 'live' | 'offline';
   wsConnected: boolean;
   onOpenSettings: () => void;
+  onOpenAssets: () => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -17,10 +18,16 @@ const Layout: React.FC<LayoutProps> = ({
   streamStatus,
   wsConnected,
   onOpenSettings,
+  onOpenAssets,
 }) => {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#0B0D11]">
-      <Header wsConnected={wsConnected} streamStatus={streamStatus} onOpenSettings={onOpenSettings} />
+      <Header
+        wsConnected={wsConnected}
+        streamStatus={streamStatus}
+        onOpenSettings={onOpenSettings}
+        onOpenAssets={onOpenAssets}
+      />
       <div className="flex flex-1 min-h-0">
         <main className="flex-1 min-h-0 flex flex-col p-4">
           {children}
