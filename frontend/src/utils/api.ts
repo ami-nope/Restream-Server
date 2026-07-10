@@ -5,9 +5,14 @@
 const BASE_URL = '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (!(options?.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...headers,
       ...options?.headers,
     },
     ...options,
@@ -108,4 +113,23 @@ export const api = {
 
   logoutYoutube: () =>
     request<{ success: boolean }>('/youtube/logout', { method: 'POST' }),
+
+  // Assets
+  getAssets: () =>
+    request<Record<string, { exists: boolean; name?: string; size?: number; url?: string }>>('/assets'),
+
+  uploadAsset: (type: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<{ success: boolean; asset: { exists: boolean; name: string; size: number; url: string } }>(
+      `/assets/upload/${type}`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+  },
+
+  deleteAsset: (type: string) =>
+    request<{ success: boolean; message: string }>(`/assets/${type}`, { method: 'DELETE' }),
 };

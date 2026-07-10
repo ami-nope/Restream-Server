@@ -6,7 +6,7 @@ import { Router, Request, Response } from 'express';
 import { SrsPublishPayload, SrsUnpublishPayload } from '../types';
 import { getConfig } from '../config/manager';
 import { getStreamStats, setStreamLive, setStreamOffline } from '../services/srs';
-import { startAllRelays, stopAllRelays, isRelayActive } from '../services/relay';
+import { handleStreamPublish, handleStreamUnpublish } from '../services/relay';
 import { setStreamConnected, setStreamDisconnected } from '../services/monitor';
 import { broadcastStreamStatus } from '../websocket';
 import { createLogger } from '../utils/logger';
@@ -39,11 +39,8 @@ router.post('/on_publish', (req: Request, res: Response) => {
   setStreamConnected();
   broadcastStreamStatus(getStreamStats().status);
 
-  // Auto-start relays if enabled
-  if (config.settings.autoStartRelay && !isRelayActive()) {
-    log.info('Auto-starting relays...');
-    setTimeout(() => startAllRelays(), 1000); // Small delay to let SRS stabilize
-  }
+  // Auto-start relays or resume from BRB
+  setTimeout(() => handleStreamPublish(), 1000); // Small delay to let SRS stabilize
 
   // SRS requires code: 0 for success
   res.json({ code: 0 });
@@ -64,11 +61,8 @@ router.post('/on_unpublish', (req: Request, res: Response) => {
   setStreamDisconnected();
   broadcastStreamStatus('offline');
 
-  // Stop all relays since the source is gone
-  if (isRelayActive()) {
-    log.info('Stopping relays (source disconnected)...');
-    stopAllRelays();
-  }
+  // Switch to BRB mode or stop relays
+  handleStreamUnpublish();
 
   res.json({ code: 0 });
 });

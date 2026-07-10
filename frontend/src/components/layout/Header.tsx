@@ -8,9 +8,10 @@ interface HeaderProps {
   wsConnected: boolean;
   streamStatus: 'live' | 'offline';
   onOpenSettings: () => void;
+  onOpenAssets: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ wsConnected, streamStatus, onOpenSettings }) => {
+const Header: React.FC<HeaderProps> = ({ wsConnected, streamStatus, onOpenSettings, onOpenAssets }) => {
   const isLive = streamStatus === 'live';
 
   return (
@@ -50,6 +51,18 @@ const Header: React.FC<HeaderProps> = ({ wsConnected, streamStatus, onOpenSettin
             {wsConnected ? 'WS' : 'WS Lost'}
           </span>
         </div>
+
+        {/* Divider */}
+        <div className="w-px h-4 bg-white/10" />
+
+        {/* Assets icon */}
+        <button
+          onClick={onOpenAssets}
+          className="text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] p-1.5 rounded-xl transition-all duration-200 text-sm select-none"
+          title="Open Assets Manager"
+        >
+          📁 Assets
+        </button>
 
         {/* Divider */}
         <div className="w-px h-4 bg-white/10" />

@@ -2,7 +2,7 @@
 // Frontend TypeScript Types
 // ============================================
 
-export type RelayStatus = 'idle' | 'connecting' | 'live' | 'error' | 'reconnecting' | 'stopped';
+export type RelayStatus = 'idle' | 'connecting' | 'live' | 'error' | 'reconnecting' | 'stopped' | 'brb';
 export type StreamStatus = 'offline' | 'live';
 export type PlatformPreset = 'youtube' | 'twitch' | 'kick' | 'facebook' | 'tiktok' | 'custom';
 
@@ -62,6 +62,8 @@ export interface MonitorStats {
   inputQuality: string | null;
   outputQuality: string | null;
   averageLatencyMs: number | null;
+  brbActive?: boolean;
+  brbTimeRemaining?: number;
 }
 
 export interface ChatMessage {
@@ -95,6 +97,9 @@ export interface AppSettings {
     reconnectMaxAttempts: number;
     reconnectBaseDelay: number;
     statsPollingInterval: number;
+    brbTimeout: number;
+    enableAutoStop: boolean;
+    enableBrbMode: boolean;
   };
   srsHost: string;
   srsRtmpPort: number;

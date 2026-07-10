@@ -70,6 +70,8 @@ export interface MonitorStats {
   inputQuality: string | null;   // 'excellent' | 'good' | 'bad' | 'worse'
   outputQuality: string | null;
   averageLatencyMs: number | null;  // estimated OBS/SRS input to relay output
+  brbActive?: boolean;
+  brbTimeRemaining?: number; // in seconds
 }
 
 /** YouTube Chat Integration settings */
@@ -97,6 +99,9 @@ export interface AppSettings {
   reconnectMaxAttempts: number;
   reconnectBaseDelay: number;  // seconds
   statsPollingInterval: number;  // milliseconds
+  brbTimeout: number;
+  enableAutoStop: boolean;
+  enableBrbMode: boolean;
 }
 
 /** Standardized multi-platform chat message */

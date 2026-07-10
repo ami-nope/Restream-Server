@@ -27,6 +27,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onRefres
   const [savedSettings, setSavedSettings] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
 
+  const [autoStart, setAutoStart] = useState(true);
+  const [autoStop, setAutoStop] = useState(true);
+  const [brbMode, setBrbMode] = useState(true);
+  const [brbTimeout, setBrbTimeout] = useState('10');
+
   // YouTube OAuth states
   const [ytAuthStatus, setYtAuthStatus] = useState<{
     clientId: string;
@@ -61,6 +66,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onRefres
       const data = await api.getSettings();
       setSettings(data);
       setStreamKey(data.streamKey);
+      setAutoStart(data.settings.autoStartRelay);
+      setAutoStop(data.settings.enableAutoStop !== false);
+      setBrbMode(data.settings.enableBrbMode !== false);
+      setBrbTimeout((data.settings.brbTimeout ?? 10).toString());
     } catch {
       setSettingsError('Failed to load Ingest settings');
     }
@@ -83,7 +92,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onRefres
     setSettingsError(null);
     setSavedSettings(false);
     try {
-      await api.updateSettings({ streamKey });
+      await api.updateSettings({
+        streamKey,
+        settings: {
+          autoStartRelay: autoStart,
+          enableAutoStop: autoStop,
+          enableBrbMode: brbMode,
+          brbTimeout: parseInt(brbTimeout, 10) || 10,
+        }
+      });
       setSavedSettings(true);
       setTimeout(() => setSavedSettings(false), 3000);
     } catch (err) {
@@ -253,10 +270,67 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onRefres
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3 border-t border-white/[0.04] pt-3">
+                <div className="flex items-center justify-between p-2 rounded bg-white/[0.01] border border-white/[0.03]">
+                  <div>
+                    <span className="text-[11px] font-semibold text-gray-300 block">Auto Start Relays</span>
+                    <span className="text-[9px] text-gray-500 block">Start relays on stream start</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={autoStart}
+                    onChange={(e) => setAutoStart(e.target.checked)}
+                    className="w-4 h-4 rounded border-white/10 bg-white/5 text-accent-light accent-accent-light"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded bg-white/[0.01] border border-white/[0.03]">
+                  <div>
+                    <span className="text-[11px] font-semibold text-gray-300 block">BRB Fallback Mode</span>
+                    <span className="text-[9px] text-gray-500 block">Stream image on disconnect</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={brbMode}
+                    onChange={(e) => setBrbMode(e.target.checked)}
+                    className="w-4 h-4 rounded border-white/10 bg-white/5 text-accent-light accent-accent-light"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded bg-white/[0.01] border border-white/[0.03]">
+                  <div>
+                    <span className="text-[11px] font-semibold text-gray-300 block">Auto Stop Relays</span>
+                    <span className="text-[9px] text-gray-500 block">Stop relays after timeout</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={autoStop}
+                    onChange={(e) => setAutoStop(e.target.checked)}
+                    className="w-4 h-4 rounded border-white/10 bg-white/5 text-accent-light accent-accent-light"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded bg-white/[0.01] border border-white/[0.03]">
+                  <div>
+                    <span className="text-[11px] font-semibold text-gray-300 block">BRB Timeout (min)</span>
+                    <span className="text-[9px] text-gray-500 block">Duration to keep BRB stream</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    disabled={!brbMode && !autoStop}
+                    value={brbTimeout}
+                    onChange={(e) => setBrbTimeout(e.target.value)}
+                    className="w-16 input-field text-xs text-center !py-1"
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/[0.04] mt-2">
                 <div className="flex items-center gap-2">
                   <button onClick={handleSaveSettings} className="btn-primary text-xs !px-3 !py-1.5">
-                    Save Key
+                    Save Settings
                   </button>
                   {savedSettings && <span className="text-[10px] text-live">Saved!</span>}
                   {settingsError && <span className="text-[10px] text-danger">{settingsError}</span>}

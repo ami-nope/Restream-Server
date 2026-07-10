@@ -10,6 +10,9 @@ import { getConfig, getDestinations } from '../config/manager';
 import { getActiveStreamName, getInputFrameCount } from './srs';
 import { createLogger } from '../utils/logger';
 import { getBackoffDelay, sleep } from '../utils/helpers';
+import fs from 'fs';
+import path from 'path';
+import { getAssetPath } from '../routes/assets';
 
 const log = createLogger('Relay');
 
@@ -31,6 +34,14 @@ const reconnectFlags = new Map<string, boolean>();
 
 /** Whether the relay system is globally active */
 let relayActive = false;
+
+/** BRB state tracking */
+let brbActive = false;
+let brbStartedAt: number | null = null;
+let brbTimer: NodeJS.Timeout | null = null;
+
+/** Map of destination ID -> BRB FFmpeg child process */
+const brbProcesses = new Map<string, ChildProcess>();
 
 interface RelayMetrics {
   frameCount: number;
@@ -479,6 +490,13 @@ function spawnRelay(destination: Destination): void {
       return;
     }
 
+    if (currentState.status === 'brb') {
+      setState(destination.id, { pid: null });
+      relayLogs.delete(destination.id);
+      log.info(`Relay to ${destination.name} transitioned to BRB placeholder`);
+      return;
+    }
+
     if (code !== 0) {
       const lastError = getLastRelayError(destination.id);
       const exitError = getRelayExitError(destination, code, lastError, wasLive);
@@ -572,6 +590,7 @@ export function startAllRelays(): void {
 /** Stop all running relays */
 export function stopAllRelays(): void {
   relayActive = false;
+  stopBrbModeOnly();
   log.info('Stopping all relays...');
 
   for (const [id, proc] of relayProcesses.entries()) {
@@ -592,7 +611,8 @@ export function stopAllRelays(): void {
 
   setTimeout(() => {
     for (const id of relayStates.keys()) {
-      if (getOrCreateState(id).status === 'stopped') {
+      const currentStatus = getOrCreateState(id).status;
+      if (currentStatus === 'stopped' || currentStatus === 'brb') {
         setState(id, { status: 'idle', pid: null, reconnectAttempts: 0 });
       }
     }
@@ -735,6 +755,7 @@ export function isRelayActive(): boolean {
 /** Cleanup - kill all processes (for graceful shutdown) */
 export function cleanup(): void {
   relayActive = false;
+  stopBrbModeOnly();
   for (const proc of relayProcesses.values()) {
     try {
       proc.kill('SIGKILL');
@@ -746,4 +767,194 @@ export function cleanup(): void {
   relayMetrics.clear();
   relayLogs.clear();
   relayStates.clear();
+}
+
+/** Get BRB Status for monitoring */
+export function getBrbStatus(): { active: boolean; timeRemaining: number } {
+  const config = getConfig();
+  const timeoutMs = (config.settings.brbTimeout ?? 10) * 60 * 1000;
+  let remaining = 0;
+
+  if (brbActive && brbStartedAt) {
+    const elapsed = Date.now() - brbStartedAt;
+    remaining = Math.max(0, Math.floor((timeoutMs - elapsed) / 1000));
+  }
+
+  return {
+    active: brbActive,
+    timeRemaining: remaining,
+  };
+}
+
+/** Stop BRB mode processes and timer */
+function stopBrbModeOnly(): void {
+  brbActive = false;
+  brbStartedAt = null;
+  if (brbTimer) {
+    clearTimeout(brbTimer);
+    brbTimer = null;
+  }
+
+  for (const [id, proc] of brbProcesses.entries()) {
+    try {
+      proc.kill('SIGKILL');
+    } catch {
+      // Ignore
+    }
+  }
+  brbProcesses.clear();
+}
+
+/** Spawn a BRB placeholder stream for a single destination */
+function spawnBrbStream(destination: Destination): void {
+  if (brbProcesses.has(destination.id)) {
+    return;
+  }
+
+  log.info(`Spawning BRB stream for ${destination.name}`);
+  const outputUrl = buildOutputUrl(destination);
+
+  // Check if custom BRB image exists, otherwise fallback to color filter
+  const imagePath = getAssetPath('brb');
+  let inputArgs: string[];
+
+  if (imagePath && fs.existsSync(imagePath)) {
+    inputArgs = [
+      '-loop', '1',
+      '-re',
+      '-r', '10',
+      '-i', imagePath,
+    ];
+  } else {
+    log.warn(`No BRB asset found. Streaming fallback black screen to ${destination.name}`);
+    inputArgs = [
+      '-f', 'lavfi',
+      '-re',
+      '-i', 'color=c=black:s=1280x720:r=10',
+    ];
+  }
+
+  const args = [
+    '-hide_banner',
+    '-loglevel', 'info',
+    ...inputArgs,
+    '-f', 'lavfi',
+    '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
+    '-c:v', 'libx264',
+    '-pix_fmt', 'yuv420p',
+    '-preset', 'ultrafast',
+    '-tune', 'zerolatency',
+    '-g', '20', // GOP of 2 seconds for 10fps
+    '-c:a', 'aac',
+    '-b:a', '128k',
+    '-shortest',
+    '-f', 'flv',
+    '-flvflags', 'no_duration_filesize',
+    outputUrl,
+  ];
+
+  const proc = spawn('ffmpeg', args, {
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+
+  brbProcesses.set(destination.id, proc);
+  setState(destination.id, { status: 'brb', pid: proc.pid || null });
+
+  proc.stderr?.on('data', (data: Buffer) => {
+    // Keep it silent or log issues if they exit
+  });
+
+  proc.on('close', (code) => {
+    brbProcesses.delete(destination.id);
+    if (brbActive) {
+      log.warn(`BRB stream process for ${destination.name} exited with code ${code}. Respawning in 2s...`);
+      setTimeout(() => {
+        if (brbActive) {
+          spawnBrbStream(destination);
+        }
+      }, 2000);
+    } else {
+      log.info(`BRB stream process for ${destination.name} stopped cleanly.`);
+    }
+  });
+
+  proc.on('error', (err) => {
+    log.error(`BRB stream error for ${destination.name}: ${err.message}`);
+  });
+}
+
+/** Switch active destinations to BRB placeholder */
+function startBrbMode(): void {
+  if (brbActive) return;
+
+  log.info('Switching destination relays to BRB placeholder streams...');
+  brbActive = true;
+  brbStartedAt = Date.now();
+
+  // Stop normal relays (but keep relayActive = true)
+  for (const [id, proc] of relayProcesses.entries()) {
+    setState(id, { status: 'brb' });
+    reconnectFlags.set(id, true);
+    proc.kill('SIGTERM');
+  }
+  relayProcesses.clear();
+
+  // Spawn BRB stream for each enabled destination
+  const destinations = getDestinations().filter((d) => d.enabled);
+  for (const dest of destinations) {
+    spawnBrbStream(dest);
+  }
+
+  // Set auto stop timer
+  const config = getConfig();
+  const timeoutMinutes = config.settings.brbTimeout ?? 10;
+
+  if (brbTimer) {
+    clearTimeout(brbTimer);
+  }
+
+  if (config.settings.enableAutoStop) {
+    brbTimer = setTimeout(() => {
+      log.warn(`OBS stream failed to reconnect within ${timeoutMinutes} minutes. Stopping all relays.`);
+      stopAllRelays();
+    }, timeoutMinutes * 60 * 1000);
+  }
+}
+
+/** Handle stream connection/publishing event */
+export function handleStreamPublish(): void {
+  const config = getConfig();
+  log.info(`Stream publish event: relayActive=${relayActive}, brbActive=${brbActive}`);
+
+  if (brbActive) {
+    // Reconnected within timeout! Stop BRB streams and resume normal streaming.
+    stopBrbModeOnly();
+    log.info('Stream reconnected during BRB. Resuming normal relays...');
+    startAllRelays();
+  } else {
+    // Check if we should auto-start relays
+    if (config.settings.autoStartRelay && !relayActive) {
+      log.info('Stream connected. Auto-starting relays...');
+      startAllRelays();
+    }
+  }
+}
+
+/** Handle stream disconnection/unpublish event */
+export function handleStreamUnpublish(): void {
+  const config = getConfig();
+  log.info(`Stream unpublish event: relayActive=${relayActive}, brbMode=${config.settings.enableBrbMode}`);
+
+  if (!relayActive) {
+    return;
+  }
+
+  if (config.settings.enableBrbMode) {
+    startBrbMode();
+  } else {
+    if (config.settings.enableAutoStop) {
+      log.info('BRB disabled and Auto Stop enabled. Stopping all relays...');
+      stopAllRelays();
+    }
+  }
 }

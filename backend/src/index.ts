@@ -6,6 +6,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import http from 'http';
+import fs from 'fs';
 
 import { loadConfig } from './config/manager';
 import { startStatsPolling, stopStatsPolling } from './services/srs';
@@ -19,6 +20,7 @@ import destinationRoutes from './routes/destinations';
 import streamRoutes from './routes/stream';
 import statsRoutes from './routes/stats';
 import youtubeRoutes from './routes/youtube';
+import assetsRoutes from './routes/assets';
 import { chatManager } from './services/chatManager';
 
 const log = createLogger('Server');
@@ -30,6 +32,14 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Load config on startup
 const config = loadConfig();
+
+// Ensure assets directory exists
+const DATA_DIR = path.resolve(__dirname, '../data');
+const ASSETS_DIR = path.join(DATA_DIR, 'assets');
+if (!fs.existsSync(ASSETS_DIR)) {
+  fs.mkdirSync(ASSETS_DIR, { recursive: true });
+}
+
 log.info(`Stream key: ${config.streamKey}`);
 log.info(`Auto-start relay: ${config.settings.autoStartRelay}`);
 log.info(`Environment: ${NODE_ENV}`);
@@ -49,6 +59,7 @@ app.use('/api/srs', callbackRoutes);
 app.use('/api/destinations', destinationRoutes);
 app.use('/api/stream', streamRoutes);
 app.use('/api/youtube', youtubeRoutes);
+app.use('/api/assets', assetsRoutes);
 app.use('/api', statsRoutes);
 
 // ---- ProChat Assets Proxy ----

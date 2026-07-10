@@ -5,6 +5,7 @@
 import { StreamStats, SrsStream, SrsStreamsResponse } from '../types';
 import { getConfig } from '../config/manager';
 import { createLogger } from '../utils/logger';
+import { handleStreamPublish, handleStreamUnpublish } from './relay';
 
 const log = createLogger('SRS');
 
@@ -112,7 +113,11 @@ async function pollStats(): Promise<void> {
   const stream = selectRelevantStream(data.streams || []);
   if (!stream) {
     if (currentStreamStats.status === 'live' || hasSessionMetadata()) {
+      const wasOffline = currentStreamStats.status === 'offline';
       setStreamOffline();
+      if (!wasOffline) {
+        handleStreamUnpublish();
+      }
     }
     return;
   }
@@ -200,9 +205,16 @@ async function pollStats(): Promise<void> {
     totalActualFrames += frameDelta;
   }
 
+  const streamWasActive = currentStreamStats.status === 'live';
   currentStreamStats.status = streamIsActive ? 'live' : 'offline';
   const fpsIsFresh = lastFpsSampleAt > 0 && now - lastFpsSampleAt <= FPS_STALE_AFTER_MS;
   currentStreamStats.fps = streamIsActive ? (fpsIsFresh ? calculatedFps : nativeFps) : null;
+
+  if (streamIsActive && !streamWasActive) {
+    handleStreamPublish();
+  } else if (!streamIsActive && streamWasActive) {
+    handleStreamUnpublish();
+  }
 
   if (stream.publish?.cid) {
     currentStreamStats.clientId = stream.publish.cid;

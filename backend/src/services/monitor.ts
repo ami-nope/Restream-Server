@@ -10,7 +10,7 @@ import {
   getInputFrameCount,
   getPeakFps,
 } from './srs';
-import { getAllRelayStates, getAggregateRelayMetrics } from './relay';
+import { getAllRelayStates, getAggregateRelayMetrics, getBrbStatus } from './relay';
 
 function secondsSince(dateString: string | null): number {
   if (!dateString) return 0;
@@ -106,5 +106,6 @@ export function getMonitorStats(): MonitorStats {
     inputQuality,
     outputQuality,
     averageLatencyMs: outputActive ? relayMetrics.averageLatencyMs : null,
+    ...getBrbStatus(),
   };
 }
