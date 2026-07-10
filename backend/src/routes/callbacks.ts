@@ -5,7 +5,7 @@
 import { Router, Request, Response } from 'express';
 import { SrsPublishPayload, SrsUnpublishPayload } from '../types';
 import { getConfig } from '../config/manager';
-import { setStreamLive, setStreamOffline } from '../services/srs';
+import { getStreamStats, setStreamLive, setStreamOffline } from '../services/srs';
 import { startAllRelays, stopAllRelays, isRelayActive } from '../services/relay';
 import { setStreamConnected, setStreamDisconnected } from '../services/monitor';
 import { broadcastStreamStatus } from '../websocket';
@@ -35,9 +35,9 @@ router.post('/on_publish', (req: Request, res: Response) => {
   }
 
   // Update stream state
-  setStreamLive(payload.client_id, payload.ip);
+  setStreamLive(payload.client_id, payload.ip, payload.stream);
   setStreamConnected();
-  broadcastStreamStatus('live');
+  broadcastStreamStatus(getStreamStats().status);
 
   // Auto-start relays if enabled
   if (config.settings.autoStartRelay && !isRelayActive()) {

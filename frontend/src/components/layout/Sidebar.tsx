@@ -60,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, streamStatus
       {/* Footer */}
       <div className="p-4 border-t border-white/[0.06]">
         <p className="text-[10px] text-gray-600 text-center">
-          Restream Server v1.0.0
+          Restream Server v1.0.1
         </p>
       </div>
     </aside>

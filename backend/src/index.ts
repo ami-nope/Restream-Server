@@ -18,6 +18,8 @@ import callbackRoutes from './routes/callbacks';
 import destinationRoutes from './routes/destinations';
 import streamRoutes from './routes/stream';
 import statsRoutes from './routes/stats';
+import youtubeRoutes from './routes/youtube';
+import { chatManager } from './services/chatManager';
 
 const log = createLogger('Server');
 
@@ -46,7 +48,30 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/srs', callbackRoutes);
 app.use('/api/destinations', destinationRoutes);
 app.use('/api/stream', streamRoutes);
+app.use('/api/youtube', youtubeRoutes);
 app.use('/api', statsRoutes);
+
+// ---- ProChat Assets Proxy ----
+app.get('/chat/assets/*', async (req, res) => {
+  try {
+    const assetPath = req.path.replace(/^\/chat\/assets\//, '');
+    const url = `https://prochat.gg/chat/assets/${assetPath}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      res.status(response.status).send('Asset not found');
+      return;
+    }
+    const contentType = response.headers.get('content-type');
+    if (contentType) {
+      res.setHeader('Content-Type', contentType);
+    }
+    const buffer = await response.arrayBuffer();
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    log.error(`Proxy asset error: ${err instanceof Error ? err.message : err}`);
+    res.status(500).send('Proxy asset error');
+  }
+});
 
 // ---- Static Frontend (production) ----
 const frontendPath = path.resolve(__dirname, '../public');
@@ -67,6 +92,9 @@ initWebSocket(server);
 // ---- Start SRS Stats Polling ----
 startStatsPolling(config.settings.statsPollingInterval);
 
+// ---- Start Chat Manager ----
+void chatManager.start();
+
 // ---- Start Server ----
 server.listen(PORT, '0.0.0.0', () => {
   log.success(`Restream Server running on http://0.0.0.0:${PORT}`);
@@ -82,6 +110,9 @@ function shutdown(signal: string) {
 
   // Stop stats polling
   stopStatsPolling();
+
+  // Stop Chat Manager
+  void chatManager.stop();
 
   // Stop all relay processes
   cleanupRelays();

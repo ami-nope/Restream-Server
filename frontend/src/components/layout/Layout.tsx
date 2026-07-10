@@ -4,33 +4,25 @@
 
 import React from 'react';
 import Header from './Header';
-import Sidebar, { Page } from './Sidebar';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: Page;
-  onNavigate: (page: Page) => void;
   streamStatus: 'live' | 'offline';
   wsConnected: boolean;
+  onOpenSettings: () => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({
   children,
-  currentPage,
-  onNavigate,
   streamStatus,
   wsConnected,
+  onOpenSettings,
 }) => {
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <Header wsConnected={wsConnected} />
+    <div className="h-screen flex flex-col overflow-hidden bg-[#0B0D11]">
+      <Header wsConnected={wsConnected} streamStatus={streamStatus} onOpenSettings={onOpenSettings} />
       <div className="flex flex-1 min-h-0">
-        <Sidebar
-          currentPage={currentPage}
-          onNavigate={onNavigate}
-          streamStatus={streamStatus}
-        />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 min-h-0 flex flex-col p-4">
           {children}
         </main>
       </div>

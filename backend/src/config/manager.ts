@@ -42,16 +42,13 @@ export function loadConfig(): AppConfig {
         },
       };
 
-      // Always prefer env var for stream key if set
-      if (process.env.STREAM_KEY) {
-        currentConfig.streamKey = process.env.STREAM_KEY;
-      }
-
       log.success(`Configuration loaded (${currentConfig.destinations.length} destinations)`);
       return currentConfig;
     } catch (err) {
       log.error(`Failed to parse config.json, using defaults: ${err}`);
-      currentConfig = { ...DEFAULT_CONFIG };
+      currentConfig = {
+        ...DEFAULT_CONFIG,
+      };
       saveConfig();
       return currentConfig;
     }
@@ -59,7 +56,9 @@ export function loadConfig(): AppConfig {
 
   // First run — create default config
   log.info('No config found, creating default configuration');
-  currentConfig = { ...DEFAULT_CONFIG };
+  currentConfig = {
+    ...DEFAULT_CONFIG,
+  };
   saveConfig();
   return currentConfig;
 }
@@ -172,9 +171,6 @@ export function importConfig(config: AppConfig): void {
     ...config,
     settings: { ...DEFAULT_CONFIG.settings, ...(config.settings || {}) },
   };
-  if (process.env.STREAM_KEY) {
-    currentConfig.streamKey = process.env.STREAM_KEY;
-  }
   saveConfig();
   log.success('Configuration imported successfully');
 }

@@ -14,6 +14,12 @@ const log = createLogger('WebSocket');
 
 let wss: WebSocketServer;
 let statsBroadcastTimer: ReturnType<typeof setInterval> | null = null;
+let chatHistoryGetter: (() => any[]) | null = null;
+
+/** Register a getter for the in-memory chat messages history to send on connection */
+export function setChatHistoryGetter(getter: () => any[]): void {
+  chatHistoryGetter = getter;
+}
 
 /** Initialize WebSocket server on the given HTTP server */
 export function initWebSocket(server: HttpServer): WebSocketServer {
@@ -25,6 +31,12 @@ export function initWebSocket(server: HttpServer): WebSocketServer {
     // Send current stats immediately on connect
     const stats = getMonitorStats();
     sendTo(ws, { type: 'monitor:stats', data: stats });
+
+    // Send current chat history immediately on connect
+    if (chatHistoryGetter) {
+      const history = chatHistoryGetter();
+      sendTo(ws, { type: 'chat:history', data: history });
+    }
 
     ws.on('close', () => {
       log.info(`Dashboard client disconnected (total: ${wss.clients.size})`);

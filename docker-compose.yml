@@ -24,7 +24,6 @@ services:
     ports:
       - "${APP_PORT:-3000}:3001"  # Dashboard + API
     environment:
-      - STREAM_KEY=${STREAM_KEY:-live}
       - SRS_HOST=srs
       - SRS_API_PORT=1985
       - SRS_RTMP_PORT=1935

@@ -95,4 +95,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(config),
     }),
+
+  // YouTube Chat Settings
+  getYoutubeSettings: () =>
+    request<{ clientId: string; redirectUri: string; authenticated: boolean; prochatUrl?: string }>('/youtube/settings'),
+
+  updateYoutubeSettings: (data: { clientId?: string; clientSecret?: string; redirectUri?: string; prochatUrl?: string }) =>
+    request<{ success: boolean }>('/youtube/settings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  logoutYoutube: () =>
+    request<{ success: boolean }>('/youtube/logout', { method: 'POST' }),
 };

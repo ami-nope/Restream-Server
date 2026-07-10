@@ -3,21 +3,25 @@
 // ============================================
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { WsMessage, MonitorStats, LogEntry, DestinationState } from '../types';
+import { WsMessage, MonitorStats, LogEntry, DestinationState, ChatMessage } from '../types';
 
 interface UseWebSocketReturn {
   connected: boolean;
   stats: MonitorStats | null;
   logs: LogEntry[];
+  chatMessages: ChatMessage[];
   clearLogs: () => void;
+  clearChat: () => void;
 }
 
 const MAX_LOGS = 500;
+const MAX_CHAT = 500;
 
 export function useWebSocket(): UseWebSocketReturn {
   const [connected, setConnected] = useState(false);
   const [stats, setStats] = useState<MonitorStats | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,6 +67,17 @@ export function useWebSocket(): UseWebSocketReturn {
             });
             break;
 
+          case 'chat:new':
+            setChatMessages((prev) => {
+              const next = [...prev, message.data as ChatMessage];
+              return next.length > MAX_CHAT ? next.slice(-MAX_CHAT) : next;
+            });
+            break;
+
+          case 'chat:history':
+            setChatMessages(message.data as ChatMessage[]);
+            break;
+
           case 'destination:status': {
             const destState = message.data as DestinationState;
             setStats((prev) => {
@@ -70,7 +85,7 @@ export function useWebSocket(): UseWebSocketReturn {
               return {
                 ...prev,
                 destinations: prev.destinations.map((d) =>
-                  d.id === destState.id ? destState : d
+                  d.id === destState.id ? { ...d, ...destState } : d
                 ),
               };
             });
@@ -111,5 +126,9 @@ export function useWebSocket(): UseWebSocketReturn {
     setLogs([]);
   }, []);
 
-  return { connected, stats, logs, clearLogs };
+  const clearChat = useCallback(() => {
+    setChatMessages([]);
+  }, []);
+
+  return { connected, stats, logs, chatMessages, clearLogs, clearChat };
 }

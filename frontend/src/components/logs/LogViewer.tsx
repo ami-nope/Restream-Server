@@ -84,7 +84,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, onClear }) => {
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="glass-card flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed min-h-[400px] max-h-[calc(100vh-280px)]"
+        className="glass-card flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed min-h-0"
       >
         {logs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-600">

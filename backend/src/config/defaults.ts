@@ -5,12 +5,20 @@
 import { AppConfig } from '../types';
 
 export const DEFAULT_CONFIG: AppConfig = {
-  streamKey: process.env.STREAM_KEY || 'live',
+  streamKey: 'live',
   destinations: [],
   settings: {
     autoStartRelay: true,
     reconnectMaxAttempts: 50,
     reconnectBaseDelay: 5,        // seconds
     statsPollingInterval: 2000,    // milliseconds
+  },
+  youtubeChat: {
+    clientId: '',
+    clientSecret: '',
+    redirectUri: '',
+    accessToken: null,
+    refreshToken: null,
+    expiresAt: null,
   },
 };

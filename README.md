@@ -30,7 +30,7 @@ SRS (RTMP Ingest) ──► Node.js Backend ──► FFmpeg -c copy ──► Y
 git clone <your-repo>
 cd Restream-Server
 cp .env.example .env
-# Edit .env and set your STREAM_KEY
+# Optional: edit .env for APP_PORT only
 ```
 
 ### 2. Deploy
@@ -39,16 +39,16 @@ cp .env.example .env
 docker compose up -d
 ```
 
-### 3. Configure OBS
+### 3. Open Dashboard
+
+Navigate to `http://<your-server-ip>:3000` and open Settings.
+
+### 4. Configure OBS
 
 | Setting | Value |
 |---------|-------|
 | **Server** | `rtmp://<your-server-ip>:1935/live` |
-| **Stream Key** | Your `STREAM_KEY` from `.env` |
-
-### 4. Open Dashboard
-
-Navigate to `http://<your-server-ip>:3000`
+| **Stream Key** | Copy it from Dashboard -> Settings |
 
 ---
 
@@ -107,7 +107,6 @@ Navigate to `http://<your-server-ip>:3000`
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `STREAM_KEY` | `live` | Stream key for OBS authentication |
 | `APP_PORT` | `3000` | External port for dashboard |
 | `SRS_HOST` | `srs` | SRS hostname (Docker service) |
 | `SRS_API_PORT` | `1985` | SRS HTTP API port |
@@ -140,7 +139,7 @@ npm run dev    # Vite dev server with API proxy
 1. Connect your GitHub repo to Railway
 2. Set the root directory to `/`
 3. Railway will detect the Dockerfile
-4. Add environment variable: `STREAM_KEY=your-key`
+4. Configure the OBS stream key from Dashboard -> Settings
 5. Note: RTMP port 1935 requires Railway TCP proxy setup
 
 ---

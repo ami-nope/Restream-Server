@@ -67,6 +67,8 @@ router.put('/settings', (req: Request, res: Response) => {
   res.json({
     streamKey: config.streamKey,
     settings: config.settings,
+    srsHost: process.env.SRS_HOST || 'srs',
+    srsRtmpPort: parseInt(process.env.SRS_RTMP_PORT || '1935', 10),
   });
 });
 

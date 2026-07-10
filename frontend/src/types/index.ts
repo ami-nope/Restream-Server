@@ -20,6 +20,9 @@ export interface Destination {
 
 export interface DestinationState {
   id: string;
+  name?: string;
+  platform?: PlatformPreset;
+  enabled?: boolean;
   status: RelayStatus;
   reconnectAttempts: number;
   lastError: string | null;
@@ -29,6 +32,7 @@ export interface DestinationState {
 
 export interface StreamStats {
   status: StreamStatus;
+  streamName: string | null;
   videoCodec: string | null;
   audioCodec: string | null;
   width: number | null;
@@ -49,6 +53,26 @@ export interface MonitorStats {
   failedCount: number;
   totalOutgoingBitrate: number;
   uptime: number;
+  incomingUptime: number;
+  outgoingUptime: number;
+  inputFps: number | null;
+  outputFps: number | null;
+  inputDroppedFrames: number;
+  outputDroppedFrames: number;
+  inputQuality: string | null;
+  outputQuality: string | null;
+  averageLatencyMs: number | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  platform: 'youtube';
+  username: string;
+  avatar: string;
+  message: string;
+  sentAt: number;
+  receivedAt: number;
+  badges: string[];
 }
 
 export interface LogEntry {
@@ -60,7 +84,7 @@ export interface LogEntry {
 }
 
 export interface WsMessage {
-  type: 'stream:status' | 'stream:stats' | 'destination:status' | 'log:entry' | 'monitor:stats';
+  type: 'stream:status' | 'stream:stats' | 'destination:status' | 'log:entry' | 'monitor:stats' | 'chat:new' | 'chat:history';
   data: unknown;
 }
 

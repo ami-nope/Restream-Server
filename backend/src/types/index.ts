@@ -26,6 +26,9 @@ export interface Destination {
 /** Runtime state for a destination relay */
 export interface DestinationState {
   id: string;
+  name?: string;
+  platform?: PlatformPreset;
+  enabled?: boolean;
   status: RelayStatus;
   reconnectAttempts: number;
   lastError: string | null;
@@ -36,6 +39,7 @@ export interface DestinationState {
 /** Incoming stream statistics from SRS */
 export interface StreamStats {
   status: StreamStatus;
+  streamName: string | null;
   videoCodec: string | null;
   audioCodec: string | null;
   width: number | null;
@@ -57,6 +61,25 @@ export interface MonitorStats {
   failedCount: number;
   totalOutgoingBitrate: number;  // kbps (estimated)
   uptime: number;  // seconds since OBS connected
+  incomingUptime: number;  // seconds, only when OBS is live
+  outgoingUptime: number;  // seconds, only when at least one relay is live
+  inputFps: number | null;
+  outputFps: number | null;
+  inputDroppedFrames: number;
+  outputDroppedFrames: number;
+  inputQuality: string | null;   // 'excellent' | 'good' | 'bad' | 'worse'
+  outputQuality: string | null;
+  averageLatencyMs: number | null;  // estimated OBS/SRS input to relay output
+}
+
+/** YouTube Chat Integration settings */
+export interface YouTubeChatSettings {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+  expiresAt: number | null; // expiration timestamp in ms
 }
 
 /** Application configuration (persisted to JSON) */
@@ -64,6 +87,8 @@ export interface AppConfig {
   streamKey: string;
   destinations: Destination[];
   settings: AppSettings;
+  youtubeChat?: YouTubeChatSettings;
+  prochatUrl?: string;
 }
 
 /** Application settings */
@@ -72,6 +97,26 @@ export interface AppSettings {
   reconnectMaxAttempts: number;
   reconnectBaseDelay: number;  // seconds
   statsPollingInterval: number;  // milliseconds
+}
+
+/** Standardized multi-platform chat message */
+export interface ChatMessage {
+  id: string;
+  platform: 'youtube';
+  username: string;
+  avatar: string;
+  message: string;
+  sentAt: number;     // epoch millisecond from publishedAt
+  receivedAt: number; // epoch millisecond when server received it
+  badges: string[];   // e.g. ["owner", "moderator", "member", "verified"]
+}
+
+/** Standard interface for chat stream providers */
+export interface ChatProvider {
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  reconnect(): Promise<void>;
+  onMessage(callback: (msg: ChatMessage) => void): void;
 }
 
 /** Log entry for the dashboard */
@@ -85,7 +130,7 @@ export interface LogEntry {
 
 /** WebSocket message envelope */
 export interface WsMessage {
-  type: 'stream:status' | 'stream:stats' | 'destination:status' | 'log:entry' | 'monitor:stats';
+  type: 'stream:status' | 'stream:stats' | 'destination:status' | 'log:entry' | 'monitor:stats' | 'chat:new' | 'chat:history';
   data: unknown;
 }
 
@@ -145,6 +190,7 @@ export interface SrsStream {
     level: string;
     width: number;
     height: number;
+    fps?: number;
   };
   audio?: {
     codec: string;
